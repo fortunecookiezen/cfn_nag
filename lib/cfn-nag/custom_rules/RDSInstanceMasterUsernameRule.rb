@@ -1,10 +1,14 @@
+# frozen_string_literal: true
+
 require 'cfn-nag/violation'
+require 'cfn-nag/util/enforce_noecho_parameter'
 require_relative 'base'
 
 # cfn_nag rules related to RDS Instance master username
 class RDSInstanceMasterUsernameRule < BaseRule
   def rule_text
-    'RDS instance master username must be Ref to NoEcho Parameter. Default credentials are not recommended'
+    'RDS instance master username must be Ref to NoEcho Parameter. Default ' \
+    'credentials are not recommended'
   end
 
   def rule_type
@@ -26,39 +30,11 @@ class RDSInstanceMasterUsernameRule < BaseRule
       if instance.masterUsername.nil?
         false
       else
-        !references_no_echo_parameter_without_default?(cfn_model,
-                                                       instance.masterUsername)
+        !no_echo_parameter_without_default?(cfn_model,
+                                            instance.masterUsername)
       end
     end
 
     violating_rdsinstances.map(&:logical_resource_id)
-  end
-
-  private
-
-  def to_boolean(string)
-    if string.to_s.casecmp('true').zero?
-      true
-    else
-      false
-    end
-  end
-
-  def references_no_echo_parameter_without_default?(cfn_model, master_username)
-    if master_username.is_a? Hash
-      if master_username.key? 'Ref'
-        if cfn_model.parameters.key? master_username['Ref']
-          parameter = cfn_model.parameters[master_username['Ref']]
-
-          return to_boolean(parameter.noEcho) && parameter.default.nil?
-        else
-          return false
-        end
-      else
-        return false
-      end
-    end
-    # String or anything weird will fall through here
-    false
   end
 end
